@@ -1,0 +1,202 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "aksClusterName": {
+            "defaultValue": "aks101cluster-vmss",
+            "type": "String",
+            "metadata": {
+                "description": "The name of the Managed Cluster resource."
+            }
+        },
+        "location": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String",
+            "metadata": {
+                "description": "The location of AKS resource."
+            }
+        },
+        "networkPlugin": {
+
+            "type": "String",
+            "metadata": {
+                "description": "The NetworkPlugin for AKS Resource"
+            }
+        },
+        "enablePrivateCluster": {
+            "type": "bool",
+            "metadata": {
+                "description": "The NetworkPlugin for AKS Resource"
+            }
+        },
+        "enableAutoScaling": {
+            "type": "bool",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "dnsPrefix": {
+            "type": "String",
+            "metadata": {
+                "description": "Optional DNS prefix to use with hosted Kubernetes API server FQDN."
+            }
+        },
+        "osDiskSizeGB": {
+            "defaultValue": 0,
+            "minValue": 0,
+            "maxValue": 1023,
+            "type": "Int",
+            "metadata": {
+                "description": "Disk size (in GiB) to provision for each of the agent pool nodes. This value ranges from 0 to 1023. Specifying 0 will apply the default disk size for that agentVMSize."
+            }
+        },
+         "kubernetesVersion": {
+            "type": "string",
+            "defaultValue": "1.19.9",
+             "allowedValues": [
+                "1.18.14",
+                "1.18.17",
+                "1.19.7",
+                "1.19.9",
+                "1.20.2",
+                "1.20.5"
+            ],
+            "metadata": {
+                "description": "The version of Kubernetes."
+            }
+        },
+
+        "agentVMSize": {
+            "defaultValue": "Standard_B2ms",
+            "type": "String",
+            "metadata": {
+                "description": "The size of the Virtual Machine."
+            }
+        },
+        "osType": {
+            "defaultValue": "Linux",
+            "allowedValues": [
+                "Linux",
+                "Windows"
+            ],
+            "type": "String",
+            "metadata": {
+                "description": "The type of operating system."
+            }
+        },
+        "virtualNetworkRG": {
+            "type": "string",
+
+            "metadata": {
+                "description": "Name of the Virtual Network"
+            }
+        },
+        "vnetName": {
+            "type": "string",
+
+            "metadata": {
+                "description": "Name of the Virtual Network"
+            }
+        },
+        "subnet01Name": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the Subnet"
+            }
+        },
+         "podcidr": {
+            "type": "string",
+            "defaultValue": "10.199.0.0/16",
+
+            "metadata": {
+                "description": "Enter the pod cidr range "
+            }
+        },
+        "minCount": {
+            "type": "int",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "maxCount": {
+            "type": "int",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "servicePrincipalClientId": {
+            "metadata": {
+                "description": "Client ID (used by cloudprovider)."
+            },
+            "type": "securestring"
+        },
+        "servicePrincipalClientSecret": {
+            "metadata": {
+                "description": "The Service Principal Client Secret."
+            },
+            "type": "securestring"
+        },
+        "resourceTag": {
+            "type": "object",
+            "metadata": {
+                "description": "Tag of AKS resource."
+            }
+        }
+    },
+    "variables": {
+        "subnets": {
+            "subnet01ref": "[concat(resourceId(parameters('virtualNetworkRG'), 'Microsoft.Network/virtualNetworks', parameters('vnetname')) , '/subnets/' , parameters('subnet01Name'))]"
+        }
+
+    },
+    "resources": [
+        {
+            "type": "Microsoft.ContainerService/managedClusters",
+            "apiVersion": "2020-07-01",
+            "name": "[parameters('aksClusterName')]",
+            "location": "[parameters('location')]",
+            "tags": "[parameters('resourceTag')]",
+            "properties": {
+                "enableRBAC": true,
+                "kubernetesVersion": "[parameters('kubernetesVersion')]",
+                "dnsPrefix": "[parameters('dnsPrefix')]",
+                "agentPoolProfiles": [
+                    {
+                        "name": "agentpool",
+                        "osDiskSizeGB": "[parameters('osDiskSizeGB')]",
+                        "vnetSubnetID": "[variables('subnets').subnet01ref]",
+                        "count": 2,
+                        "vmSize": "[parameters('agentVMSize')]",
+                         "maxCount": "[parameters('maxCount')]",
+                         "minCount": "[parameters('minCount')]",
+                        "enableAutoScaling": "[parameters('enableAutoScaling')]",
+                        "osType": "[parameters('osType')]",
+                        "storageProfile": "ManagedDisks",
+                        "type": "VirtualMachineScaleSets",
+                        "mode": "System",
+                        "availabilityZones": [
+                            "1",
+                            "2",
+                            "3"
+                        ]
+                    }
+                ],
+                 "servicePrincipalProfile": {
+                    "ClientId": "[parameters('servicePrincipalClientId')]",
+                    "Secret": "[parameters('servicePrincipalClientSecret')]"
+                },
+                "apiServerAccessProfile": {
+
+                    "enablePrivateCluster": "[parameters('enablePrivateCluster')]"
+                },
+                "networkProfile": {
+                    "loadBalancerSku": "standard",
+                    "networkPlugin": "[parameters('networkPlugin')]",
+                    "podCidr": "[parameters('podcidr')]"
+
+                }
+            }
+        }
+
+    ]
+}
